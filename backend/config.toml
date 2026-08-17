@@ -1,0 +1,36 @@
+# Weave Talk — 双工语音对话后端配置
+# 模型相关段（[api]/[asr]/[voice]/[providers]/[defaults]/[default_assistant]/
+# [title_generation]/[sub_agent]）与 chatbot 的 config_model.toml 结构一致，
+# 但直接写在本文件（无 config_model.toml 拆分）。
+# 本应用完全去除工具调用：voice 会话只有 ASR→LLM→TTS 纯对话链路。
+
+[server]
+host = "127.0.0.1"
+port = 8203
+
+[security]
+jwt_secret_key = "weave-talk-local-dev-secret-change-me-in-production-2026"
+jwt_expire_days = 7
+cors_allow_origins = ["*"]
+cors_allow_credentials = true
+
+[database]
+# type: sqlite（默认，本地轻量，零外部依赖）| postgres（与 chatbot 一致）
+# sqlite 模式：path 相对 backend/ 解析；启动时自动建库建表
+# postgres 模式：使用下方 host/port/username/password/name
+type = "sqlite"
+path = "weave_talk.db"
+host = "127.0.0.1"
+port = 5432
+username = "postgres"
+password = ""
+name = "weave_talk"
+pool_size = 10
+max_overflow = 20
+pool_timeout = 30
+pool_recycle = 1800
+
+# ════════════════════════════════════════════════════════════════
+# 模型相关段（[api]/[asr]/[voice]/[providers]/[defaults]/[default_assistant]/
+# [sub_agent]/[title_generation]）位于同目录 config_model.toml（不入 git，
+# 含真实 API key）。config_model.toml 缺失时以下键可用作模板：

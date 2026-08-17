@@ -1,0 +1,616 @@
+:root {
+  --color-primary: #7AA35A;
+  --color-primary-dark: #6B8F4D;
+  --color-secondary: #9ABE7A;
+  --color-accent: #7AA35A;
+  --color-bg: #f5f7f5;
+  --color-bg-secondary: #f8faf8;
+  --color-sidebar: #f2f5f2;
+  --color-code-bg: #e8ece5;
+  --color-text: #2d3b24;
+  --color-text-light: #6b7d5e;
+  --color-text-primary: var(--color-text);
+  --color-text-secondary: var(--color-text-light);
+  --color-user-bubble: #e4ede0;
+  --color-white: #ffffff;
+  --color-border: #cddbc8;
+  --color-hover: #eaf2e6;
+  --color-error: #d85c5c;
+  --color-danger: var(--color-error);
+  --color-success: #5a8a3a;
+  --color-info: var(--color-primary);
+
+  --surface-panel-strong: #ffffff;
+  --surface-panel-subtle: #f8faf8;
+  --surface-input: #ffffff;
+  --surface-workbench: #ffffff;
+  --panel-border: rgba(107, 141, 77, 0.15);
+  --panel-border-strong: rgba(122, 163, 90, 0.22);
+  --frame-shadow: 0 26px 54px rgba(90, 130, 60, 0.08), 0 8px 18px rgba(90, 130, 60, 0.05);
+  --panel-shadow: 0 12px 24px rgba(90, 130, 60, 0.06), 0 2px 6px rgba(90, 130, 60, 0.04);
+  --glass-blur: blur(14px);
+
+  --font-main: 'Inter', 'Noto Sans SC', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+
+  --sidebar-width: 300px;
+  --header-height: 56px;
+  --drawer-width: 85vw;
+  --breakpoint-sm: 640px;
+  --breakpoint-md: 768px;
+  --breakpoint-lg: 1024px;
+
+  --shadow-sm: 0 -1px 4px rgba(90, 130, 60, 0.06), 0 3px 10px rgba(90, 130, 60, 0.08);
+  --shadow-md: 0 -2px 8px rgba(90, 130, 60, 0.06), 0 10px 24px rgba(90, 130, 60, 0.12);
+  --shadow-lg: 0 -3px 12px rgba(90, 130, 60, 0.08), 0 18px 36px rgba(90, 130, 60, 0.14);
+
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-lg: 18px;
+  --radius-xl: 24px;
+  --radius-pill: 18px;
+
+  --shell-frame-padding: 0px;
+  --shell-workbench-radius: 28px;
+  --shell-card-gap: 18px;
+  --mobile-tab-bar-height: 44px;
+  --mobile-tab-bar-offset: 66px;
+
+  --transition-fast: 150ms ease;
+  --transition-normal: 250ms ease;
+  --transition-slow: 400ms ease;
+
+  --app-background:
+    linear-gradient(180deg, #ffffff 0%, #fafafa 100%);
+
+  color-scheme: light;
+}
+
+[data-theme="dark"] {
+  --color-primary: #8fbf6a;
+  --color-primary-dark: #8fbf6a;
+  --color-secondary: #a8d08a;
+  --color-accent: #8fbf6a;
+  --color-bg: #0a0a0a;
+  --color-bg-secondary: #111111;
+  --color-sidebar: #111111;
+  --color-code-bg: #1a1a1a;
+  --color-text: #e0e0e0;
+  --color-text-light: #888888;
+  --color-text-primary: var(--color-text);
+  --color-text-secondary: var(--color-text-light);
+  --color-user-bubble: #1a1a1a;
+  --color-white: #141414;
+  --color-border: #2a2a2a;
+  --color-hover: #1a1a1a;
+  --color-error: #e06b6b;
+  --color-danger: var(--color-error);
+  --color-success: #6abf7a;
+  --color-info: var(--color-primary);
+
+  --surface-panel-strong: #141414;
+  --surface-panel-subtle: #0f0f0f;
+  --surface-input: #1a1a1a;
+  --surface-workbench: #0a0a0a;
+  --panel-border: #2a2a2a;
+  --panel-border-strong: rgba(143, 191, 106, 0.22);
+  --frame-shadow: 0 18px 36px rgba(0, 0, 0, 0.55), 0 6px 14px rgba(0, 0, 0, 0.45);
+  --panel-shadow: 0 8px 20px rgba(0, 0, 0, 0.45), 0 2px 6px rgba(0, 0, 0, 0.35);
+  --glass-blur: blur(14px);
+
+  --shadow-sm: 0 -1px 4px rgba(0, 0, 0, 0.35), 0 3px 10px rgba(0, 0, 0, 0.40);
+  --shadow-md: 0 -2px 8px rgba(0, 0, 0, 0.40), 0 10px 24px rgba(0, 0, 0, 0.45);
+  --shadow-lg: 0 -3px 12px rgba(0, 0, 0, 0.45), 0 18px 36px rgba(0, 0, 0, 0.55);
+
+  --app-background: #000000;
+
+  color-scheme: dark;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body, #app {
+  height: 100vh;
+  height: 100dvh;
+  width: 100%;
+  overflow: hidden;
+  overscroll-behavior-x: none;
+}
+
+body {
+  padding-bottom: 0;
+}
+
+body {
+  font-family: var(--font-main);
+  font-display: swap;
+  font-size: 14px;
+  color: var(--color-text);
+  background: var(--app-background);
+  background-color: var(--color-bg);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* View Transition API: ripple theme switch */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+
+::view-transition-old(root) {
+  z-index: 1;
+}
+
+::view-transition-new(root) {
+  z-index: 9999;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+  border: none;
+  background: none;
+  font-size: inherit;
+}
+
+input, textarea {
+  font-family: inherit;
+  font-size: inherit;
+  border: none;
+  outline: none;
+  background: none;
+}
+
+input::placeholder, textarea::placeholder {
+  color: var(--color-text-light);
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #b5c9a8;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #8da87e;
+}
+
+[data-theme="dark"] ::-webkit-scrollbar-thumb {
+  background: #4a5e40;
+}
+
+[data-theme="dark"] ::-webkit-scrollbar-thumb:hover {
+  background: #6b8060;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes blink {
+  0%, 50% { opacity: 1; }
+  51%, 100% { opacity: 0; }
+}
+
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity var(--transition-normal);
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+
+.slide-enter-active,
+.slide-leave-active {
+  transition: opacity var(--transition-normal), transform var(--transition-normal);
+}
+
+.slide-enter-from {
+  opacity: 0;
+  transform: translateX(-20px);
+}
+
+.slide-leave-to {
+  opacity: 0;
+  transform: translateX(20px);
+}
+
+.page-enter-active {
+  animation: fadeInUp 0.3s ease-out;
+}
+
+.page-leave-active {
+  animation: fadeOut 0.2s ease-in;
+}
+
+@keyframes fadeOut {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+.drawer-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(2px);
+  z-index: 998;
+  animation: fadeIn 0.2s ease-out;
+}
+
+.drawer-overlay.visible {
+  display: block;
+}
+
+@media (min-width: 768px) {
+  .hide-on-desktop {
+    display: none !important;
+  }
+}
+
+@media (max-width: 767px) {
+  .hide-on-mobile {
+    display: none !important;
+  }
+
+  .chat-header {
+    padding: 0 16px;
+  }
+
+  .message-bubble {
+    padding: 8px 12px;
+  }
+
+  .message-bubble .content {
+    max-width: 85%;
+  }
+
+  .streaming-message {
+    padding: 8px 12px;
+  }
+
+  .streaming-message .content {
+    max-width: 85%;
+  }
+
+  .chat-input-wrapper {
+    padding: 8px 12px 12px;
+  }
+}
+
+@media (max-width: 480px) {
+  .message-bubble .content {
+    max-width: 90%;
+  }
+
+  .message-bubble .text {
+    padding: 10px 12px;
+    font-size: 13px;
+  }
+
+  .streaming-message .text {
+    padding: 10px 12px;
+    font-size: 13px;
+  }
+}
+
+.chat-main {
+  position: relative;
+}
+
+/* Page slide transitions between Chat and Notes views */
+.page-slide-left-enter-active,
+.page-slide-right-enter-active {
+  z-index: 2;
+  transition: opacity 0.3s cubic-bezier(0.22, 1, 0.36, 1),
+              transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: opacity, transform;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  overflow: hidden;
+}
+
+.page-slide-left-leave-active,
+.page-slide-right-leave-active {
+  z-index: 1;
+  transition: opacity 0.25s cubic-bezier(0.22, 1, 0.36, 1),
+              transform 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: opacity, transform;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  overflow: hidden;
+}
+
+.page-slide-left-enter-from {
+  opacity: 0;
+  transform: translateX(40px);
+}
+
+.page-slide-left-leave-to {
+  opacity: 0;
+  transform: translateX(-40px);
+}
+
+.page-slide-right-enter-from {
+  opacity: 0;
+  transform: translateX(-40px);
+}
+
+.page-slide-right-leave-to {
+  opacity: 0;
+  transform: translateX(40px);
+}
+
+@media (max-width: 767px) {
+  .page-slide-left-enter-active,
+  .page-slide-right-enter-active {
+    transition-duration: 0.22s;
+  }
+
+  .page-slide-left-leave-active,
+  .page-slide-right-leave-active {
+    transition-duration: 0.18s;
+  }
+
+  .page-slide-left-enter-from,
+  .page-slide-right-leave-to {
+    transform: translateX(24px);
+  }
+
+  .page-slide-left-leave-to,
+  .page-slide-right-enter-from {
+    transform: translateX(-24px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Embedded <audio>/<video> in markdown replies must never overflow their
+ * container. Browsers default media elements to 300px wide; in narrow
+ * bubbles (mobile / small windows) the reply area is < 300px and the
+ * player sticks out of the bubble (conv b848048c). Media cards rendered
+ * by FileAttachment already constrain themselves — this covers markdown-
+ * embedded and preview contexts.
+ */
+.message-bubble audio,
+.message-bubble video,
+.streaming-message audio,
+.streaming-message video,
+.stream-markdown audio,
+.stream-markdown video,
+.agent-step-markdown audio,
+.agent-step-markdown video,
+.markdown-body audio,
+.markdown-body video {
+  max-width: 100%;
+}
+
+.message-bubble video,
+.streaming-message video,
+.stream-markdown video,
+.agent-step-markdown video,
+.markdown-body video {
+  height: auto;
+}
+
+/* Embed iframes (YouTube/Bilibili official share links) must not overflow
+ * narrow bubbles either: their width/height attributes are desktop-sized. */
+.message-bubble iframe,
+.streaming-message iframe,
+.stream-markdown iframe,
+.agent-step-markdown iframe,
+.markdown-body iframe {
+  max-width: 100%;
+  border: 0;
+  border-radius: var(--radius-sm);
+  aspect-ratio: 16 / 9;
+  background: #000;
+}
+
+/* ------------------------------------------------------------------ */
+/* Markdown code blocks (emitted by the renderer in useMarkdown.ts as
+ * <div class="code-block"> with a header: language label + one-click copy
+ * button). Long lines soft-wrap at the box edge (word wrap) instead of
+ * overflowing horizontally; indentation and hard newlines are preserved. */
+/* ------------------------------------------------------------------ */
+.code-block {
+  position: relative;
+  margin: 8px 0;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background-color: var(--color-code-bg);
+  overflow: hidden;
+}
+
+.code-block-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 4px 6px 4px 12px;
+  border-bottom: 1px solid var(--color-border);
+  background-color: color-mix(in srgb, var(--color-code-bg) 84%, var(--color-text) 6%);
+}
+
+.code-block-lang {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--color-text-light);
+  user-select: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.code-block-copy-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--color-text-light);
+  cursor: pointer;
+  transition: background-color var(--transition-fast), color var(--transition-fast);
+}
+
+.code-block-copy-btn:hover {
+  background-color: var(--color-hover);
+  color: var(--color-text);
+}
+
+.code-block-copy-btn:active {
+  transform: scale(0.94);
+}
+
+.code-block-copy-btn .cb-copy-icon,
+.code-block-copy-btn .cb-check-icon {
+  transition: opacity var(--transition-fast), transform var(--transition-fast);
+}
+
+.code-block-copy-btn .cb-check-icon {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  opacity: 0;
+  transform: scale(0.6);
+}
+
+.code-block-copy-btn.copied {
+  color: var(--color-success);
+}
+
+.code-block-copy-btn.copied .cb-copy-icon {
+  opacity: 0;
+  transform: scale(0.6);
+}
+
+.code-block-copy-btn.copied .cb-check-icon {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.code-block pre {
+  margin: 0;
+  padding: 12px 16px;
+  border: 0;
+  border-radius: 0;
+  background-color: transparent;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  word-break: normal;
+}
+
+.code-block pre code {
+  background: none;
+  padding: 0;
+}

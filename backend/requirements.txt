@@ -1,0 +1,15 @@
+# weave-talk 依赖（公共 PyPI/镜像均可安装；版本下限与已验证环境兼容）
+fastapi
+uvicorn[standard]
+sqlalchemy[asyncio]
+aiosqlite
+PyJWT
+bcrypt
+pydantic
+toml
+python-multipart
+httpx
+websockets
+openai==2.41.0
+numpy
+pypinyin

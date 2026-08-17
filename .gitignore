@@ -1,0 +1,16 @@
+# 运行时产物
+*.log
+*.pid
+*.db
+*.db-wal
+*.db-shm
+audio_files/
+
+# 环境与依赖
+.venv/
+__pycache__/
+node_modules/
+dist/
+
+# 含真实 API key 的模型配置（模板见 README；勿提交）
+config_model.toml
