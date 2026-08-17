@@ -17,21 +17,6 @@ end-to-end ASR → LLM → TTS pipeline over a real-time WebSocket, with barge-i
 - **Graceful degradation**: no ASR config → WS sends an error event and closes; TTS off → text-only events; no LLM → fallback copy
 - **Frontend**: Vue3 voice UI (VoiceChat component + useVoiceDuplex duplex client)
 
-## Code Review (based on the codebase)
-
-**The real-time session state machine is the hardest part — and the most solidly built part**: `services/voice_service.py` (~4,000 lines / 107 methods) carries the entire full-duplex session orchestration — barge-in normalization, EoT semantic check + watchdog, emotion decay, fragment merging, noise gating, interjection, TTS flow control and silence detection. State machines interleaving audio timing + event protocol + async LLM calls are extremely prone to deadlocks/races; here it is organized as an event queue + explicit state fields. High completeness for its class.
-
-**Excellent config-driven design**: `config_model.toml` merges `[api]/[asr]/[voice]/[providers]` blocks wholesale; 50+ keys all have defaults. ASR modes, TTS, LLM routing and system prompt are all declarative — no vendor is hard-coded.
-
-**Clean service boundaries**: ASR / TTS / LLM / provider_router / title_generator are separate files decoupled from orchestration — swapping any vendor is a config change, not a code change.
-
-**Room for improvement**:
-- `voice_service.py` at ~4,000 lines mixes orchestration + audio details + event protocol — the biggest single maintenance burden; split into "event protocol / session state machine / audio stream handling" modules
-- The intent-classifier sub-agent treats overly short/non-semantic input (e.g., bare "smoke") as noise and emits `user_turn_cancelled` — native semantics, but new users may misread it as a fault (noted in this README)
-- 40+ config keys, most without comments — high onboarding cost for tuning; one-line docs per key would help
-
-**Overall**: high engineering complexity and high completeness; its core asset is voice_service's duplex state machine and the full degradation path set. Main debt: oversized single file and thin config documentation density.
-
 ## Directory Structure
 
 ```
