@@ -286,3 +286,19 @@ TOKEN=$TOKEN SID=<会话ID> python3 /tmp/weave-talk-ws-test.py
   `tts_base_url`/`[providers.mimo]` 配置。
 - **改了 config_model.toml 不生效？** 需重启服务（配置仅在启动时加载）。
 - **测试账号？** `test / 123456`（首次启动自动创建）。
+
+## 安全注意事项
+
+- **默认测试账号**：首次启动自动创建 `test / 123456`。该账号无任何保护性限制，
+  **仅限本机/内网开发使用**；部署到公网前请先删除该账号（删除 `weave_talk.db`
+  后改为注册自己的账号），或修改 `backend/app/main.py` 的 `_ensure_test_user`。
+- **JWT 密钥**：不硬编码入库。优先读环境变量 `JWT_SECRET_KEY`；未设置时首次启动
+  自动生成并持久化到 `backend/.jwt_secret`（已 gitignore）。公网部署务必显式配置
+  环境变量密钥。
+- **CORS**：默认 `cors_allow_origins = ["*"]` 且凭据被强制关闭（浏览器规范）；
+  需要携带凭据的跨域场景必须配置显式 origin 白名单。
+- **登录限流**：默认 10 次失败/60 秒窗口（按用户名+IP）返回 429，防暴力破解；
+  注意若置于反向代理后所有用户共享代理 IP，需按实际部署调整或关闭
+  （`login_rate_limit_max = 0`）。
+- **登出即失效**：登录签发 JWT 的同时写入 `user_sessions` 表，登出即删除该记录，
+  已登出 token 立即 401。

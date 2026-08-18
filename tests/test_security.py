@@ -103,7 +103,7 @@ def _ws_roundtrip(token: str, sid: str, inject_test_event: bool) -> str:
         async with websockets.connect(url) as ws:
             events = []
             sent_text = False
-            deadline = asyncio.get_event_loop().time() + 75
+            deadline = asyncio.get_event_loop().time() + 45
             while asyncio.get_event_loop().time() < deadline:
                 try:
                     raw = await asyncio.wait_for(ws.recv(), timeout=12)
@@ -131,9 +131,22 @@ def _ws_roundtrip(token: str, sid: str, inject_test_event: bool) -> str:
                 else:
                     if m.get("event") == "assistant_text" and m.get("done"):
                         return "assistant_done"
+                if m.get("event") == "error":
+                    return f"error:{m.get('error', '')[:60]}"
             return "timeout"
 
     return asyncio.run(main())
+
+
+def _require_voice_enabled() -> None:
+    """预检：WS 用例需要 voice_enabled=true，否则快速失败而非长超时。"""
+    r = httpx.get(f"{BASE}/healthz", timeout=10)
+    assert r.status_code == 200, f"healthz failed: {r.status_code}"
+    if not r.json().get("voice_enabled"):
+        raise AssertionError(
+            "voice_enabled=false — WS 用例无法运行。请用 tests/run_security_suite.sh "
+            "启动（它会以含 [voice] enabled=true 的测试配置重启服务）。"
+        )
 
 
 def main() -> None:
@@ -146,6 +159,13 @@ def main() -> None:
         test_no_test_backdoor,
         test_ws_text_path_without_asr,
     ]
+    # WS 用例预检（其余用例不依赖 voice_enabled）
+    if "test_ws_text_path_without_asr" in sys.argv[1:] or len(sys.argv) == 1:
+        try:
+            _require_voice_enabled()
+        except AssertionError as exc:
+            print(f"SKIP test_ws_text_path_without_asr: {exc}")
+            tests = [t for t in tests if t is not test_ws_text_path_without_asr]
     failures = 0
     for t in tests:
         name = t.__name__

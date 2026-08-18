@@ -39,3 +39,156 @@ pool_recycle = 1800
 # 模型相关段（[api]/[asr]/[voice]/[providers]/[defaults]/[default_assistant]/
 # [sub_agent]/[title_generation]）位于同目录 config_model.toml（不入 git，
 # 含真实 API key）。config_model.toml 缺失时以下键可用作模板：
+
+# ─── 默认模型段（与 config_model.toml 同结构；config_model.toml 存在时整段覆盖）───
+# 默认部署零外部依赖可启动：voice 开（文本输入路径可用）、LLM/ASR/TTS key 为空时
+# 对应能力降级（LLM 报错、ASR 降级文本、TTS 关闭）。配置真实 key 后解锁完整能力。
+
+[api]
+base_url = "https://api.deepseek.com/v1"
+api_key = ""
+model_name = "deepseek-v4-flash"
+
+[asr]
+# 是否使用 DashScope Realtime 流式识别（语音助理主通道，需配 dashscope_api_key）
+is_dashscope = true
+# 是否使用 MiMo 流式识别（true 时优先于通用模式；DashScope 异常时可切换此兜底）
+is_mimo = false
+# MiMo 模式 API key（OpenAI 兼容接口的 bearer token，is_mimo=true 时使用）
+api_key = ""
+# 通用非流式 ASR 服务地址（`POST {base_url}/transcribe`，两种流式模式都关闭时生效）
+base_url = ""
+# 通用模式模型名（默认 paraformer-zh）
+model = ""
+# DashScope API key（流式识别鉴权 + 热词词汇表同步共用，sk- 开头）
+dashscope_api_key = ""
+# DashScope 流式识别模型：fun-asr-realtime（默认）或 qwen3-asr-flash-realtime-*
+dashscope_model = "fun-asr-realtime"
+# 热词自定义词汇表 REST API 地址（/api/asr/hotwords 同步词汇表时调用，见 asr_vocabulary_service.py）
+dashscope_vocabulary_url = "https://dashscope.aliyuncs.com/api/v1/services/audio/asr/customization"
+# ffmpeg 转码超时（秒）：非 wav 音频（webm/mp3/flac）转 16kHz 单声道 PCM16 的上限
+ffmpeg_timeout_seconds = 60
+# 非流式 HTTP 转写请求超时（秒）
+http_timeout_seconds = 300
+# 上游 ASR WebSocket 建连超时（秒）
+ws_open_timeout = 10
+# 上游 WebSocket 心跳间隔（秒）：防止 DashScope 静默 ~60s 后断开连接导致识别冻结
+ws_ping_interval = 20
+# 心跳响应超时（秒）
+ws_ping_timeout = 20
+# WebSocket 关闭握手超时（秒）
+ws_close_timeout = 5
+# FunASR VAD 静音判定阈值（毫秒）：超过该时长静音即判定一句话结束。
+max_sentence_silence = 100
+# MiMo 流式识别 partial 结果推送间隔（秒）
+mimo_partial_interval_seconds = 1.5
+# MiMo 模式每次识别最少积累的音频时长（秒）
+mimo_partial_min_seconds = 0.5
+
+# ════════════ 语音对话（[voice]：全双工语音助理）══════════════════════════
+# 覆盖 LLM 对话、EoT 判定、打断（barge-in）、插话、情绪、TTS 全部行为。
+# 读取方：backend/app/services/voice_service.py（会话编排）、tts_service.py（合成）
+# weave-talk 差异：本应用无工具调用，_generate_and_speak 只走纯文本流式回答。
+
+[voice]
+# 语音助理总开关（false 时 /api/voice/ws 直接以 1013 关闭）
+enabled = true
+# 助手身份名（用于人设/身份保密段；可自定义）
+identity = ""
+# LLM 供应商路由键（provider_router.py 按此选择 [providers.*] 配置；默认 "default"，
+# 即 [api] 段；provider 配置缺失时自动回落 [api].base_url/api_key）
+provider = "default"
+# 语音对话主 LLM 模型名（空 = 走供应商默认模型）
+model_name = "deepseek-v4-flash"
+# 语音主 LLM 采样温度
+temperature = 0.7
+# 语音主 LLM 单轮最大输出 token 数
+max_tokens = 1024
+# 语音会话携带的最近对话轮数（作为上下文）
+context_turns = 8
+# 语音轮次强制关闭 LLM 思考（reasoning）：语音延迟等不起推理时间（true 推荐）
+disable_thinking = true
+# 全双工模型覆盖（非空时优先于 model_name 用于语音会话）
+duplex_model = ""
+# 意图分类子代理模型（空 = 回落主模型）
+intent_model = ""
+# ─── 打断（barge-in）机制：TTS 播报中用户插话时立即暂停/应答 ───
+barge_in_enabled = true
+# 播报开始后的"不可打断窗口"（秒）：窗口内说出的内容只排队不打断
+barge_in_no_interrupt_seconds = 1.2
+# 每次确认打断后的冷却时间（秒）
+barge_in_cooldown_seconds = 2.0
+# 声学层"即时打断"（FireRedChat pVAD 模式）：TTS 播放中检测到语音即暂停音频
+barge_in_onset_enabled = true
+# 近场声学门控：浏览器把麦克风输入分类为近场（用户本人）vs 远场（环境声），
+# 经 audio_proximity WS 事件上报。开启后远场语音永不暂停播放
+barge_in_proximity_gate = true
+# 近场信号新鲜度窗口（秒）
+barge_in_proximity_stale_seconds = 1.0
+# 声学即时打断的最短句长（字符，去标点后）
+barge_in_onset_min_chars = 3
+# ─── EoT（end-of-turn）判定：多久不讲话算一句话说完 ───
+# 语义 EoT：无句末标点的句子，静音超过 eot_semantic_probe_seconds 后由 LLM 判定语义是否完整
+eot_semantic_enabled = true
+# 语义 EoT 判定等待静音（秒）
+eot_semantic_probe_seconds = 0.6
+# 播放被暂停（声学打断中）时的语义判定等待静音（秒）
+eot_paused_probe_seconds = 0.6
+# 语义 EoT LLM 调用硬超时（秒）
+eot_semantic_timeout_seconds = 1.5
+# 句尾带终止标点（完整句）的冲刷静音（秒）
+eot_silence_seconds = 0.6
+# 句尾无终止标点（大概率是句中停顿）的冲刷静音（秒）
+eot_silence_incomplete_seconds = 1.6
+# 完整句冲刷后的"无 ASR 活动"宽限（秒）
+eot_complete_grace_seconds = 0.5
+# 完整句等待宽限的硬上限（秒）
+eot_complete_max_seconds = 2.0
+# ─── 碎片合并（EoT 把连续话语切碎后，在应答端重新拼合）───
+fragment_merge_seconds = 1.0
+fragment_merge_max_seconds = 10.0
+# ─── 噪音/环境过滤 ───
+noise_gate_max_chars = 3
+# FunASR VAD 语音/噪音判定阈值（[-1.0, 1.0]，0.1 步进）
+asr_speech_noise_threshold = 0.3
+# 是否把最近对话轮次作为 raw_input.context 传给 fun-asr-realtime
+asr_context_enabled = true
+# 传给 ASR 上下文的最近轮数（DashScope 每角色上限 5 条）
+asr_context_turns = 3
+# 意图子代理（should_respond 判定）可见的最近轮数
+intent_context_turns = 4
+# ─── 性能与容错 ───
+subagent_timeout_seconds = 6.0
+llm_retry_attempts = 2
+backchannel_recall_seconds = 30.0
+# ─── 插话（interjection）：用户说话中，助手可简短插一句 ───
+interjection_enabled = true
+interjection_model = ""
+interjection_cooldown_seconds = 3.0
+interjection_max_per_turn = 3
+# 情绪系统：影响插话频率与回答口吻；情绪经 WS emotion 事件下发
+emotion_enabled = true
+# 语音会话中提交的后台任务结束后是否主动播报结果
+# （weave-talk 无后台任务系统，该键保留仅为与 chatbot 配置结构一致）
+bg_task_notify_enabled = true
+# 语音对话系统提示词：决定口吻/禁 emoji 等。会被 TTS 朗读，
+# 严禁含 URL、JSON、代码等不适合朗读的内容；开头可用 (温柔) 等风格标签控制演绎
+# （weave-talk 无工具调用，已去掉 chatbot 默认值中的工具使用指引句）
+system_prompt = "你是一个全双工语音对话助手，正在与用户进行实时语音交流。请严格遵守以下要求：\n1. 用自然、亲切、口语化的中文回答，像朋友聊天一样，句子简短，避免长篇大论和复杂排版（不要使用标题、表格、代码块、列表符号）。\n2. 回复可以以整体风格标签开头，用于控制语音演绎风格，只能使用以下风格词：(温柔)、(平静)、(开心)、(兴奋)、(激动)、(严肃)、(无奈)、(委屈)、(冷漠)、(活泼)、(慵懒)、(俏皮)、(深沉)、(欣慰)、(感动)、(失望)、(焦急)、(惊讶)、(害怕)、(难过)、(生气)、(磁性)。风格标签只能出现在回答最开头且只出现一次。严禁在括号内写动作描写或声音词（如 温柔地笑、微笑、叹气、笑、哼、啊、嗯、思考、停顿），也不要在回答中插入任何方括号音频标签（如 [轻笑]、[叹气]、[停顿]）——这些会被语音合成读成不自然的怪声。\n3. 你的回答会被语音合成朗读，因此绝不要在回答中包含 JSON、URL、代码或任何不适合朗读的内容。\n4. 如果用户的问题很复杂，先用一两句话口头回应。\n5. 禁止使用任何 emoji 表情符号和颜文字。"
+# ─── TTS 语音合成（MiMo mimo-v2.5-tts，OpenAI 兼容流式接口）───
+# 总开关：false 时语音会话只回文本事件不发声（播报链路自动跳过）
+tts_enabled = true
+# TTS 服务地址（空 = 从 [providers.mimo] 回落）
+tts_base_url = ""
+# TTS API key（空 = 从 [providers.mimo] 回落）
+tts_api_key = ""
+# TTS 模型名
+tts_model = "mimo-v2.5-tts"
+# TTS 音色（当前为"冰糖"）
+tts_voice = "冰糖"
+# TTS 风格指令（作为额外语气要求注入合成请求）
+tts_style_instruction = "用自然、亲切、口语化的语气，语速适中，像朋友聊天一样温暖。"
+
+# ════════════ 多供应商路由（[providers]：provider_router.py）═══════════════
+# voice.provider="default" 用 [api]；TTS 的 base_url/api_key 为空时回落
+# [providers.mimo]；voice_service._build_llm 在 provider 缺失时同样回落 [api]。

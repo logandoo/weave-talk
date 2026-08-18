@@ -1,15 +1,15 @@
-# weave-talk 依赖（公共 PyPI/镜像均可安装；版本下限与已验证环境兼容）
-fastapi
-uvicorn[standard]
-sqlalchemy[asyncio]
-aiosqlite
-PyJWT
-bcrypt
-pydantic
-toml
-python-multipart
-httpx
-websockets
-openai==2.41.0
-numpy
-pypinyin
+# weave-talk 依赖（版本锁定：与本地已验证 venv 一致，公共 PyPI 可解析）
+fastapi==0.141.1
+uvicorn[standard]==0.52.3
+sqlalchemy[asyncio]==2.0.52
+aiosqlite==0.22.1
+PyJWT==2.13.0
+bcrypt==5.0.0
+pydantic==2.13.4
+toml==0.10.2
+python-multipart==0.0.32
+httpx==0.28.1
+websockets==17.0.1
+openai==3.2.0
+numpy==2.5.2
+pypinyin==0.55.0

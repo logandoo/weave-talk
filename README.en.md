@@ -286,3 +286,20 @@ intent-classifier sub-agent, which emits `user_turn_cancelled` + `ignored` (nati
   `tts_base_url`/`[providers.mimo]`.
 - **config_model.toml changes not applied?** Restart the service (config loads at startup only).
 - **Test account?** `test / 123456` (auto-created on first launch).
+
+## Security Notes
+
+- **Default test account**: `test / 123456` is auto-created on first start with
+  no protection — **development use only**. Before exposing to the public
+  internet, delete the database so only your registered account exists, or
+  customize `_ensure_test_user` in `backend/app/main.py`.
+- **JWT secret**: never hardcoded. Read from `JWT_SECRET_KEY` env var first;
+  otherwise auto-generated and persisted to `backend/.jwt_secret` (gitignored)
+  on first start. Set the env var explicitly for public deployments.
+- **CORS**: default `cors_allow_origins = ["*"]` with credentials force-disabled
+  (browser spec). Use an explicit origin allow-list when credentials are needed.
+- **Login rate limit**: 10 failures / 60s window per (username, IP) → 429.
+  Behind a reverse proxy all clients share the proxy IP — adjust or disable
+  (`login_rate_limit_max = 0`) as needed.
+- **Logout revokes instantly**: JWTs are recorded in `user_sessions` on login
+  and removed on logout — a logged-out token returns 401 immediately.

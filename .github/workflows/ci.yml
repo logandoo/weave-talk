@@ -23,18 +23,18 @@ jobs:
         run: ruff check backend/app/
       - name: Backend syntax
         run: python -m compileall -q backend/app/
-      - name: API tests (live service, REST only)
+      - name: API + WS tests (self-contained suite)
         run: |
           bash scripts/install_venv.sh >/dev/null 2>&1 || true
           bash scripts/init_db.sh >/dev/null 2>&1 || true
-          bash scripts/start.sh >/dev/null 2>&1
-          sleep 4
-          curl -fsS http://127.0.0.1:8203/healthz || exit 1
-          python tests/test_api.py
+          bash tests/run_security_suite.sh
 
   frontend:
     name: Frontend typecheck + build
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
