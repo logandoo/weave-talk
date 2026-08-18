@@ -122,14 +122,6 @@ export function useAuth() {
     router.push('/login')
   }
 
-  async function updatePermissions(permissions: Record<string, boolean>) {
-    const response = await api.put('/auth/me/permissions', permissions)
-    const normalized = normalizeUser(response.data)
-    user.value = normalized
-    localStorage.setItem(USER_KEY, JSON.stringify(normalized))
-    return normalized
-  }
-
   async function checkAuth() {
     if (!token.value) return false
     try {
@@ -152,6 +144,5 @@ export function useAuth() {
     login,
     logout,
     checkAuth,
-    updatePermissions,
   }
 }

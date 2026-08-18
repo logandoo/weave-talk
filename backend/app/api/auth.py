@@ -1,13 +1,47 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Request
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from collections import defaultdict, deque
+from datetime import UTC, datetime
+from time import monotonic
 
-from app.db.database import get_db, User, UserSession
-from app.schemas.chat import UserCreate, UserResponse, LoginRequest, TokenResponse
-from app.services.auth_service import hash_password, verify_password, create_access_token
-from datetime import datetime
+from fastapi import APIRouter, Depends, HTTPException, Request, status
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.core.config import get_config
+from app.core.deps import get_current_user
+from app.db.database import User, UserSession, get_db
+from app.schemas.chat import LoginRequest, TokenResponse, UserResponse
+from app.services.auth_service import create_access_token, hash_password, verify_password
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
+
+# 登录失败限流：按 (用户名, IP) 维度滑动窗口计数，窗口内失败超阈值返回 429。
+# 进程内状态（单 worker 部署）；防暴力破解而非精确节流。
+_fail_log: dict = defaultdict(deque)
+
+
+def _too_many_login_failures(username: str, client_ip: str) -> bool:
+    cfg = get_config()
+    limit = cfg.security_login_rate_limit_max
+    if limit <= 0:
+        return False
+    window = cfg.security_login_rate_limit_window_seconds
+    key = (username, client_ip)
+    q = _fail_log[key]
+    now = monotonic()
+    while q and now - q[0] > window:
+        q.popleft()
+    if not q:
+        # 窗口过期后清空 key，防止 (username, IP) 组合无限累积
+        _fail_log.pop(key, None)
+        return False
+    return len(q) >= limit
+
+
+def _record_login_failure(username: str, client_ip: str) -> None:
+    cfg = get_config()
+    if cfg.security_login_rate_limit_max <= 0:
+        return
+    _fail_log[(username, client_ip)].append(monotonic())
 
 
 def _user_response(user) -> UserResponse:
@@ -57,10 +91,18 @@ async def register(request: LoginRequest, db: AsyncSession = Depends(get_db)):
 
 @router.post("/login", response_model=TokenResponse)
 async def login(request: Request, login_req: LoginRequest, db: AsyncSession = Depends(get_db)):
+    client_ip = request.client.host if request.client else "unknown"
+    if _too_many_login_failures(login_req.username, client_ip):
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="登录失败次数过多，请稍后再试",
+        )
+
     result = await db.execute(select(User).where(User.username == login_req.username))
     user = result.scalar_one_or_none()
 
     if not user or not await verify_password(login_req.password, user.password_hash):
+        _record_login_failure(login_req.username, client_ip)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid username or password"
@@ -72,8 +114,8 @@ async def login(request: Request, login_req: LoginRequest, db: AsyncSession = De
             detail="User account is disabled"
         )
 
-    user.last_login_at = datetime.utcnow()
-    user.last_login_ip = request.client.host if request.client else None
+    user.last_login_at = datetime.now(UTC).replace(tzinfo=None)
+    user.last_login_ip = client_ip
     await db.commit()
 
 
@@ -84,9 +126,9 @@ async def login(request: Request, login_req: LoginRequest, db: AsyncSession = De
     user_session = UserSession(
         user_id=user.id,
         session_token=access_token,
-        ip_address=request.client.host if request.client else None,
+        ip_address=client_ip,
         user_agent=user_agent,
-        last_active_at=datetime.utcnow()
+        last_active_at=datetime.now(UTC).replace(tzinfo=None)
     )
     db.add(user_session)
     await db.commit()
@@ -101,7 +143,7 @@ async def login(request: Request, login_req: LoginRequest, db: AsyncSession = De
 @router.get("/me", response_model=UserResponse)
 async def get_current_user_info(
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(__import__("app.core.deps", fromlist=["get_current_user"]).get_current_user)
+    current_user: User = Depends(get_current_user)
 ):
     return _user_response(current_user)
 
@@ -110,7 +152,7 @@ async def get_current_user_info(
 async def logout(
     request: Request,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(__import__("app.core.deps", fromlist=["get_current_user"]).get_current_user)
+    current_user: User = Depends(get_current_user)
 ):
     auth_header = request.headers.get("authorization", "")
     if auth_header.startswith("Bearer "):

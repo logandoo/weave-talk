@@ -13,8 +13,8 @@
 - **情绪系统**：情绪状态随对话衰减（`_decay_emotion`），可驱动插话文案与 TTS 风格（`_speak_interjection`）
 - **ASR 三模可配**：DashScope 实时流式（fun-asr-realtime / qwen3-asr-flash-realtime）、MiMo 流式、通用 HTTP 转写
 - **TTS 可配**：MiMo mimo-v2.5-tts（OpenAI 兼容流式接口），支持音色/风格指令
-- **LLM 多路由**：任意 OpenAI 兼容 base_url，`[providers.*]` 按 priority 路由，缺省回落 `[api]`
-- **优雅降级**：ASR 未配置→WS 下发 error 并关闭；TTS 关闭→只回文本事件；LLM 失败→error 事件
+- **LLM 多路由**：任意 OpenAI 兼容 base_url，`[providers.*]` 按 priority 路由，provider 缺失时自动回落到可用供应商（default 优先）
+- **优雅降级**：ASR 未配置→降级为仅文本输入（info 事件提示）；TTS 关闭→只回文本事件；LLM 失败→error 事件
 - **前端**：Vue3 语音界面（VoiceChat 组件 + useVoiceDuplex 双工客户端）
 
 ## 目录结构
@@ -186,7 +186,7 @@ priority = 1
 
 降级行为：
 - ASR 未配置（`is_dashscope=false`、`is_mimo=false`、`base_url=""`）→
-  `/api/voice/ws` 建立后下发 `{"event":"error","error":"语音识别服务未配置"}` 并关闭
+  `/api/voice/ws` 建立后下发 `{"event":"info","message":"语音识别未配置，仅支持文本输入"}`，会话继续（文本路径可用）
 - `tts_enabled=false` → 只回文本事件不播报
 - LLM 调用失败（无 key / 网络错误）→ 下发 `{"event":"error","error":"生成失败: ..."}`
 
@@ -281,7 +281,7 @@ TOKEN=$TOKEN SID=<会话ID> python3 /tmp/weave-talk-ws-test.py
 - **为什么 WS 第一个事件是 session 而不是 ready？** 协议设计如此：先发
   session（会话 ID + assistant ID）再发 ready（tts 能力）。
 - **语音输入没有反应？** 检查 [asr] 配置：三种模式必须至少一种可用；
-  ASR 未配置时服务会在 WS 建立后下发 error 并关闭连接。
+  ASR 未配置时服务会在 WS 建立后下发 info 事件并降级为仅文本输入（不关闭连接）。
 - **有回复但没有声音？** `[voice].tts_enabled=false` 时只回文本事件；或检查
   `tts_base_url`/`[providers.mimo]` 配置。
 - **改了 config_model.toml 不生效？** 需重启服务（配置仅在启动时加载）。

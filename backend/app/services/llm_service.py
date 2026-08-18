@@ -1,9 +1,11 @@
-from openai import AsyncOpenAI
-from typing import Optional, AsyncIterator, Dict, List, Any
-import asyncio
 import json
-import re
 import logging
+import re
+from collections.abc import AsyncIterator
+from typing import Any
+
+from openai import AsyncOpenAI
+
 from app.core.config import get_config
 
 logger = logging.getLogger(__name__)
@@ -39,7 +41,7 @@ class LLMService:
             # ignores it there anyway (keeps qwen/vLLM contexts lean, PHASE 1A).
             if "reasoning_content" in msg and not msg.get("tool_calls"):
                 msg = {k: v for k, v in msg.items() if k != "reasoning_content"}
-            if any(k.startswith("_") for k in msg.keys()):
+            if any(k.startswith("_") for k in msg):
                 msg = {k: v for k, v in msg.items() if not k.startswith("_")}
             if "synthetic" in msg:
                 # Internal marker for harness-injected directives (4.8) —
@@ -95,7 +97,7 @@ class LLMService:
         # params (accepted by vLLM etc.) but the openai SDK rejects them as
         # create() kwargs — they must travel inside extra_body, which the SDK
         # merges into the JSON body verbatim.
-        _sdk_extra: Dict[str, Any] = {}
+        _sdk_extra: dict[str, Any] = {}
         top_k = kwargs.get("top_k")
         if top_k is not None:
             _sdk_extra["top_k"] = top_k
@@ -282,7 +284,7 @@ class LLMService:
 
     async def stream_chat_structured(
         self, messages: list, **kwargs
-    ) -> AsyncIterator[Dict[str, Any]]:
+    ) -> AsyncIterator[dict[str, Any]]:
         params = self._build_params(messages, **kwargs)
         params["stream"] = True
         tools = kwargs.get("tools")
@@ -293,7 +295,7 @@ class LLMService:
             response = await self.client.chat.completions.create(**params)
             inside_think = False
             think_buf = ""
-            tool_calls_accumulated: List[Dict[str, Any]] = []
+            tool_calls_accumulated: list[dict[str, Any]] = []
             chunk = None
 
             async for chunk in response:

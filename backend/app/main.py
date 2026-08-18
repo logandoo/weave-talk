@@ -6,10 +6,11 @@
 """
 import logging
 import os
+from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, RedirectResponse
+from fastapi.responses import FileResponse
 from sqlalchemy import select
 
 logging.basicConfig(
@@ -19,14 +20,27 @@ logging.basicConfig(
 
 from app.api import auth, voice  # noqa: E402
 from app.core.config import get_config  # noqa: E402
-from app.db.database import AsyncSessionLocal, init_db, User  # noqa: E402
+from app.db.database import AsyncSessionLocal, User, init_db  # noqa: E402
 from app.services.http_client import close_shared_async_client  # noqa: E402
 
 logger = logging.getLogger(__name__)
 
 config = get_config()
 
-app = FastAPI(title="Weave Talk API", version="1.0.0")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    if not config.security_jwt_secret_key:
+        raise RuntimeError("JWT secret key is not configured")
+    audio_files_dir = os.path.join(os.path.dirname(__file__), "..", "audio_files")
+    os.makedirs(audio_files_dir, exist_ok=True)
+    await init_db()
+    await _ensure_test_user()
+    yield
+    await close_shared_async_client()
+
+
+app = FastAPI(title="Weave Talk API", version="1.0.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -57,22 +71,6 @@ async def _ensure_test_user() -> None:
                 logger.info("test user created (test / 123456)")
     except Exception as exc:
         logger.warning("test user ensure failed: %s", exc)
-
-
-@app.on_event("startup")
-async def startup_event():
-    if not config.security_jwt_secret_key:
-        raise RuntimeError("JWT secret key is not configured")
-
-    audio_files_dir = os.path.join(os.path.dirname(__file__), "..", "audio_files")
-    os.makedirs(audio_files_dir, exist_ok=True)
-    await init_db()
-    await _ensure_test_user()
-
-
-@app.on_event("shutdown")
-async def shutdown_event():
-    await close_shared_async_client()
 
 
 @app.get("/healthz")

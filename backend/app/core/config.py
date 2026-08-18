@@ -1,11 +1,15 @@
+import logging
 import os
-import toml
-from pathlib import Path
-from typing import Optional
+import secrets
 from functools import lru_cache
+from pathlib import Path
+
+import toml
+
+logger = logging.getLogger(__name__)
 
 
-def _parse_int(value) -> Optional[int]:
+def _parse_int(value) -> int | None:
     if value == "" or value is None:
         return None
     try:
@@ -34,7 +38,7 @@ class Config:
         self._config = self._merge_model_config(self._config)
 
     @staticmethod
-    def _resolve_model_config_path(config_path: str) -> Optional[Path]:
+    def _resolve_model_config_path(config_path: str) -> Path | None:
         env_override = os.environ.get("CONFIG_MODEL_PATH")
         if env_override:
             return Path(env_override).resolve()
@@ -150,7 +154,7 @@ class Config:
         return self._config.get("api", {}).get("base_url", "https://api.openai.com/v1")
 
     @property
-    def api_key(self) -> Optional[str]:
+    def api_key(self) -> str | None:
         key = self._config.get("api", {}).get("api_key", "")
         return key if key else None
 
@@ -159,11 +163,25 @@ class Config:
         return self._config.get("security", {})
 
     @property
-    def security_jwt_secret_key(self) -> Optional[str]:
+    def security_jwt_secret_key(self) -> str | None:
+        # 优先级：config.toml [security].jwt_secret_key → 环境变量 JWT_SECRET_KEY
+        # → 自动生成并持久化到 backend/.jwt_secret（gitignore）。默认密钥不入库，
+        # 生产可用环境变量注入；本地自动生成保证重启后已签发的 token 仍可验证。
         key = self.security.get("jwt_secret_key", "")
         if key:
             return key
-        return os.environ.get("JWT_SECRET_KEY") or None
+        env_key = os.environ.get("JWT_SECRET_KEY")
+        if env_key:
+            return env_key
+        secret_file = self.backend_root / ".jwt_secret"
+        if secret_file.exists():
+            return secret_file.read_text(encoding="utf-8").strip() or None
+        generated = secrets.token_hex(32)
+        try:
+            secret_file.write_text(generated, encoding="utf-8")
+        except OSError:
+            logger.warning("无法持久化自动生成的 JWT 密钥到 %s", secret_file)
+        return generated
 
     @property
     def security_cors_allow_origins(self) -> list:
@@ -174,14 +192,27 @@ class Config:
 
     @property
     def security_cors_allow_credentials(self) -> bool:
+        # 浏览器规范：Access-Control-Allow-Origin: * 与 credentials 不能共存。
+        # 配置了显式 origin 列表时才允许携带凭据；通配符模式强制降级为 false。
+        if "*" in self.security_cors_allow_origins:
+            return False
         return bool(self.security.get("cors_allow_credentials", True))
+
+    @property
+    def security_login_rate_limit_max(self) -> int:
+        """登录失败限流阈值（窗口内失败次数），0 关闭限流。"""
+        return int(self.security.get("login_rate_limit_max", 10))
+
+    @property
+    def security_login_rate_limit_window_seconds(self) -> int:
+        return int(self.security.get("login_rate_limit_window_seconds", 60))
 
     @property
     def super_admin_bypass(self) -> bool:
         return bool(self.security.get("super_admin_bypass", False))
 
     @property
-    def model_name(self) -> Optional[str]:
+    def model_name(self) -> str | None:
         return self._config.get("api", {}).get("model_name") or None
 
     @property
@@ -230,7 +261,7 @@ class Config:
         return self.defaults.get("top_p", 1.0)
 
     @property
-    def default_top_k(self) -> Optional[int]:
+    def default_top_k(self) -> int | None:
         val = self.defaults.get("top_k")
         return _parse_int(val)
 
@@ -243,7 +274,7 @@ class Config:
         return self.defaults.get("frequency_penalty", 0.0)
 
     @property
-    def default_max_tokens(self) -> Optional[int]:
+    def default_max_tokens(self) -> int | None:
         val = self.defaults.get("max_tokens")
         return _parse_int(val)
 
@@ -268,7 +299,7 @@ class Config:
         return self.default_assistant.get("top_p", 1.0)
 
     @property
-    def default_assistant_top_k(self) -> Optional[int]:
+    def default_assistant_top_k(self) -> int | None:
         val = self.default_assistant.get("top_k")
         return _parse_int(val)
 
@@ -281,7 +312,7 @@ class Config:
         return self.default_assistant.get("frequency_penalty", 0.0)
 
     @property
-    def default_assistant_max_tokens(self) -> Optional[int]:
+    def default_assistant_max_tokens(self) -> int | None:
         val = self.default_assistant.get("max_tokens")
         return _parse_int(val)
 
@@ -345,7 +376,7 @@ class Config:
             return 0.7
 
     @property
-    def voice_max_tokens(self) -> Optional[int]:
+    def voice_max_tokens(self) -> int | None:
         return _parse_int(self.voice.get("max_tokens", 1024))
 
     @property
@@ -776,7 +807,7 @@ class Config:
 
 
 
-@lru_cache()
+@lru_cache
 def get_config() -> Config:
     return Config()
 

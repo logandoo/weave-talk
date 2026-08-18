@@ -1,9 +1,9 @@
 from fastapi import Depends, HTTPException, WebSocket, status
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from sqlalchemy.ext.asyncio import AsyncSession
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.database import get_db, User
+from app.db.database import User, UserSession, get_db
 from app.services.auth_service import decode_access_token
 
 security = HTTPBearer()
@@ -24,6 +24,17 @@ async def get_user_from_token(token: str, db: AsyncSession) -> User:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid token payload",
+        )
+
+    # 会话存在性校验：login 时写入 user_sessions、logout 时删除，因此
+    # 已登出的 token 即使签名与 exp 仍有效也立即失效（服务端为会话事实源）。
+    result = await db.execute(
+        select(UserSession).where(UserSession.session_token == token)
+    )
+    if result.scalar_one_or_none() is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token session has been revoked",
         )
 
     result = await db.execute(select(User).where(User.id == user_id))

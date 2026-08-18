@@ -42,7 +42,7 @@ function downmixToMono(buffer: AudioBuffer): Float32Array {
   return mono
 }
 
-function resample(input: Float32Array, sourceRate: number, targetRate: number): Float32Array {
+function resample(input: Float32Array<ArrayBuffer>, sourceRate: number, targetRate: number): Float32Array<ArrayBuffer> {
   if (sourceRate === targetRate) return input
   const ratio = sourceRate / targetRate
   const outLen = Math.max(1, Math.round(input.length / ratio))
@@ -278,7 +278,7 @@ export function useVoiceDuplex() {
           import('simple-rnnoise-wasm/rnnoise.wasm?url'),
           import('simple-rnnoise-wasm/rnnoise.worklet.js?url'),
         ])
-        const assets = rnnoise_loadAssets({
+        const assets = await rnnoise_loadAssets({
           scriptSrc: workletMod.default as string,
           moduleSrc: wasmMod.default as string,
         })
@@ -374,7 +374,7 @@ export function useVoiceDuplex() {
           sendProximity(true)
         }
       }
-      const resampled = resample(mono, e.inputBuffer.sampleRate, 16000)
+      const resampled = resample(mono as Float32Array<ArrayBuffer>, e.inputBuffer.sampleRate, 16000)
       if (resampled.length === 0) return
       if (socket.bufferedAmount < 256 * 1024) {
         socket.send(float32ToLEBuffer(resampled))
@@ -580,6 +580,11 @@ export function useVoiceDuplex() {
         errorMsg.value = ev.error || '语音服务出错'
         state.value = 'error'
         break
+      case 'info':
+        // 非致命提示（如 ASR 未配置时"仅支持文本输入"），不影响会话
+        errorMsg.value = ''
+        pushMessage({ role: 'system', text: ev.message || '', kind: 'notice' })
+        break
     }
   }
 
@@ -736,8 +741,8 @@ export function useVoiceDuplex() {
   }
 
   // Test hook: expose sendText on window for Playwright WS-level testing.
-  // Non-invasive: only active when the page sets window.__VOICE_TEST_MODE.
-  if (typeof window !== 'undefined') {
+  // Only active when the page sets window.__VOICE_TEST_MODE (default off).
+  if (typeof window !== 'undefined' && (window as any).__VOICE_TEST_MODE) {
     ;(window as any).__voiceTestSend = (text: string) => sendText(text)
   }
 

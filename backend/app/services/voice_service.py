@@ -17,8 +17,7 @@ import logging
 import re
 import time
 import uuid
-from datetime import datetime
-from typing import Any, AsyncIterator, Optional
+from datetime import UTC, datetime
 
 import websockets
 from sqlalchemy import select
@@ -309,7 +308,7 @@ def _prox_is_near_signal(seen: bool, near: bool, updated: float, stale_sec: floa
     return (now - updated) < stale_sec
 
 
-def _pre_classify_reusable(pre: Optional[dict], text: str) -> bool:
+def _pre_classify_reusable(pre: dict | None, text: str) -> bool:
     """Whether the onset-pause pre-classify verdict may be reused for the
     EoT-flushed utterance *text*.
 
@@ -506,9 +505,9 @@ class _SpokenDupWindow:
     """
 
     def __init__(self, maxlen: int = 8, min_len: int = 6) -> None:
-        self._segs: "collections.deque" = collections.deque(maxlen=maxlen)
+        self._segs: collections.deque = collections.deque(maxlen=maxlen)
         self._min_len = min_len
-        self._epoch: Optional[int] = None
+        self._epoch: int | None = None
 
     def check(self, text: str, epoch: int) -> bool:
         """True when `text` matches a segment that COMPLETED playing in the
@@ -574,7 +573,7 @@ def _strip_markdown_for_tts(text: str) -> str:
     return t.strip()
 
 
-def _md_link_label(m: "re.Match") -> str:
+def _md_link_label(m: re.Match) -> str:
     """Markdown link/image replacement: alt text or label only."""
     alt, label = m.group(1), m.group(2)
     return (alt or label or "").strip()
@@ -644,7 +643,7 @@ class _VoiceASR:
     can slice per-turn text with an offset.
     """
 
-    def __init__(self, service: ASRService, event_queue: asyncio.Queue, hotwords: Optional[list] = None, vocabulary_id: Optional[str] = None, context: Optional[list[dict]] = None):
+    def __init__(self, service: ASRService, event_queue: asyncio.Queue, hotwords: list | None = None, vocabulary_id: str | None = None, context: list[dict] | None = None):
         self.service = service
         self.q = event_queue
         self.hotwords = hotwords or []
@@ -655,9 +654,9 @@ class _VoiceASR:
         self.context: list[dict] = list(context or [])
         self._audio_q: asyncio.Queue = asyncio.Queue()
         self._upstream = None
-        self._send_task: Optional[asyncio.Task] = None
-        self._recv_task: Optional[asyncio.Task] = None
-        self._sup_task: Optional[asyncio.Task] = None
+        self._send_task: asyncio.Task | None = None
+        self._recv_task: asyncio.Task | None = None
+        self._sup_task: asyncio.Task | None = None
         self._closed = False
         self._task_id = uuid.uuid4().hex[:32]
         # Accumulated transcript carried across upstream reconnects so the
@@ -666,8 +665,8 @@ class _VoiceASR:
         self._carry_text = ""
         # First-connect synchronization: start() waits on this so startup
         # failures propagate to the session instead of dying in the supervisor.
-        self._start_done: Optional[asyncio.Event] = None
-        self._start_error: Optional[Exception] = None
+        self._start_done: asyncio.Event | None = None
+        self._start_error: Exception | None = None
 
     async def start(self) -> None:
         if self.service.is_mimo:
@@ -996,7 +995,7 @@ class _VoiceASR:
 class VoiceDuplexSession:
     """One full-duplex voice session bound to a client WebSocket."""
 
-    def __init__(self, websocket, user, db, conversation_id: Optional[str] = None):
+    def __init__(self, websocket, user, db, conversation_id: str | None = None):
         self.websocket = websocket
         self.user = user
         self.db = db
@@ -1009,7 +1008,7 @@ class VoiceDuplexSession:
         self._send_lock = asyncio.Lock()
 
         # ASR
-        self._asr: Optional[_VoiceASR] = None
+        self._asr: _VoiceASR | None = None
         self._asr_events: asyncio.Queue = asyncio.Queue()
         self._latest_full = ""
         self._consumed_offset = 0
@@ -1093,7 +1092,7 @@ class VoiceDuplexSession:
         # _tts_prefetch_valid is cleared by _drain_tts_queue so a gate-truncated
         # prefetch (interrupt/pause) is NEVER replayed against a later item
         # with the same text (A4.9 latency-fix review Important #1).
-        self._tts_prefetch_q: Optional[asyncio.Queue] = None
+        self._tts_prefetch_q: asyncio.Queue | None = None
         self._tts_prefetch_text = ""
         self._tts_prefetch_epoch = 0
         self._tts_prefetch_valid = True
@@ -1102,7 +1101,7 @@ class VoiceDuplexSession:
         # classifier runs; a backchannel/defer resume plays it directly, and a
         # drain (interrupt/stop) drops it. Epoch-guarded against cross-turn
         # replay (see _pause_playback/_resume_playback/_drain_tts_queue).
-        self._resume_q: Optional[asyncio.Queue] = None
+        self._resume_q: asyncio.Queue | None = None
         self._resume_epoch = 0
         self._resume_text = ""
         self._send_pace_start = 0.0
@@ -1129,10 +1128,10 @@ class VoiceDuplexSession:
         # be a stale far-field by then, and a REAL near-field interrupt would
         # be judged backchannel and swallowed). The snapshot reflects the
         # acoustic condition WHILE the utterance was being heard.
-        self._prox_utterance: Optional[bool] = None
+        self._prox_utterance: bool | None = None
         # Onset-pause pre-classify: verdict computed in parallel with the EoT
         # watchdog, reused by _on_user_turn_locked when the text matches.
-        self._pre_classify: Optional[dict] = None
+        self._pre_classify: dict | None = None
         # Semantic EoT state: LLM judge on unpunctuated text (see watchdog).
         self._eot_semantic_checking = False
         self._eot_semantic_complete = False
@@ -1177,7 +1176,7 @@ class VoiceDuplexSession:
         self._consumer_playing = False
         self._speaking_deadline = 0.0           # safety fallback to clear _speaking
         self._spoken_text_recent = ""           # tail of text currently spoken (echo detect)
-        self._pending_interruption_note: Optional[str] = None
+        self._pending_interruption_note: str | None = None
         # Text GENERATED so far in the current turn (vs. _turn_segments which
         # only records text whose audio was actually synthesized). Used by
         # _request_interrupt to attribute an abort that happened BEFORE any
@@ -1213,7 +1212,7 @@ class VoiceDuplexSession:
         # Long-task UX (2026-07-22): tool-loop state for immediate user
         # acknowledgment, and the in-progress assistant message row so tool
         # activity survives a mid-loop disconnect (incremental persistence).
-        self._turn_msg_id: Optional[str] = None
+        self._turn_msg_id: str | None = None
 
         self._tasks: list[asyncio.Task] = []
 
@@ -1403,7 +1402,7 @@ class VoiceDuplexSession:
             )
             conv = conv_result.scalar_one_or_none()
             if conv:
-                conv.updated_at = datetime.utcnow()
+                conv.updated_at = datetime.now(UTC).replace(tzinfo=None)
             await self.db.commit()
             if final and conv and conv.title == "新语音对话":
                 asyncio.create_task(self._generate_voice_title(text))
@@ -1432,7 +1431,7 @@ class VoiceDuplexSession:
             )
             conv = conv_result.scalar_one_or_none()
             if conv:
-                conv.updated_at = datetime.utcnow()
+                conv.updated_at = datetime.now(UTC).replace(tzinfo=None)
             await self.db.commit()
             # LLM-based auto-title: generate title after the first assistant
             # reply, matching the same TitleGeneratorService used in Agent mode.
@@ -1510,7 +1509,7 @@ class VoiceDuplexSession:
         except Exception as exc:
             logger.debug("voice title generation failed: %s", exc)
 
-    def _thinking_off_body(self, svc: Optional[LLMService] = None) -> dict:
+    def _thinking_off_body(self, svc: LLMService | None = None) -> dict:
         """Provider-aware payload that forces reasoning/thinking OFF.
 
         Voice turns are latency-sensitive: reasoning burns seconds before the
@@ -1538,7 +1537,7 @@ class VoiceDuplexSession:
         provider_type = "qwen" if "dashscope" in base_url.lower() else "deepseek"
         return build_thinking_extra_body(provider_type, False)
 
-    def _extra_body(self, svc: Optional[LLMService] = None) -> Optional[dict]:
+    def _extra_body(self, svc: LLMService | None = None) -> dict | None:
         """Thinking OFF by default for every provider (voice.disable_thinking
         defaults to True); None only when the admin explicitly opts in to
         reasoning for voice turns."""
@@ -1665,7 +1664,7 @@ class VoiceDuplexSession:
             return self._prox_utterance
         return self._prox_is_near()
 
-    async def _classify_barge_in(self, text: str, history: Optional[list[dict]] = None) -> str:
+    async def _classify_barge_in(self, text: str, history: list[dict] | None = None) -> str:
         """Return interrupt | defer | backchannel.
 
         Echo-aware AND context-aware: the mic picks up the assistant's OWN TTS
@@ -1783,7 +1782,7 @@ class VoiceDuplexSession:
             return "backchannel"
         return "backchannel"
 
-    async def _classify_intent(self, text: str, history: Optional[list[dict]] = None) -> dict:
+    async def _classify_intent(self, text: str, history: list[dict] | None = None) -> dict:
         """Return {should_respond, needs_tools, reason}.
 
         The subagent first judges whether the utterance is worth answering at
@@ -1884,7 +1883,7 @@ class VoiceDuplexSession:
             # Fail-safe: never silently swallow a possibly-real user message.
             return {"should_respond": True, "needs_tools": False, "reason": ""}
 
-    async def _classify_eot(self, text: str, history: Optional[list[dict]] = None) -> dict:
+    async def _classify_eot(self, text: str, history: list[dict] | None = None) -> dict:
         """Semantic end-of-turn judge: return {"complete": bool, "reason": str}.
 
         Acoustic silence does not imply end-of-turn (the survey consensus):
@@ -1941,7 +1940,7 @@ class VoiceDuplexSession:
                 "voice semantic EoT result: complete=%s reason=%r text=%r",
                 result.get("complete"), result.get("reason", ""), text[-60:],
             )
-        except asyncio.TimeoutError:
+        except TimeoutError:
             logger.debug("voice semantic EoT check timed out (fail-open wait)")
         except Exception as exc:
             logger.debug("voice semantic EoT check failed (fail-open wait): %s", exc)
@@ -2229,7 +2228,7 @@ class VoiceDuplexSession:
             logger.error("voice TTS synth error: %s", exc)
         await out.put(None)
 
-    def _peek_next_text_item(self) -> Optional[dict]:
+    def _peek_next_text_item(self) -> dict | None:
         """Peek the TTS queue for the next TEXT item without consuming it.
         Returns None when the queue is empty (flush markers and the poison
         pill are skipped — prefetching past a flush marker is beneficial:
@@ -2376,7 +2375,7 @@ class VoiceDuplexSession:
                     first_wait = False
                     try:
                         pcm = await asyncio.wait_for(q.get(), timeout=60.0)
-                    except asyncio.TimeoutError:
+                    except TimeoutError:
                         logger.warning(
                             "voice TTS first chunk timed out (60s) — dropping segment %r",
                             (text or "")[:30],
@@ -3138,7 +3137,7 @@ class VoiceDuplexSession:
                 try:
                     nxt_item = await asyncio.wait_for(self._turn_queue.get(), timeout=wait)
                     got = True
-                except asyncio.TimeoutError:
+                except TimeoutError:
                     break
             if nxt_item is None:
                 # Poison pill (shutdown) arrived mid-merge — hand it back to
@@ -3240,7 +3239,7 @@ class VoiceDuplexSession:
         intent = None
         try:
             intent = await asyncio.wait_for(intent_task, timeout=10.0)
-        except asyncio.TimeoutError:
+        except TimeoutError:
             intent = {"should_respond": True, "needs_tools": False, "reason": ""}
         except Exception:
             intent = {"should_respond": True, "needs_tools": False, "reason": ""}
@@ -3292,7 +3291,7 @@ class VoiceDuplexSession:
         if not self._closed:
             await self._set_state("listen")
 
-    async def _generate_and_speak(self, text: str, prefetched: Optional[str] = None) -> None:
+    async def _generate_and_speak(self, text: str, prefetched: str | None = None) -> None:
         self._history.append({"role": "user", "content": text})
         self._task_cancelled = False
         self._turn_msg_id = None
@@ -3466,7 +3465,7 @@ class VoiceDuplexSession:
             await self._persist_message("assistant", full_reply)
             await self._send_json({"event": "assistant_text", "text": strip_voice_tags(full_reply), "done": True})
 
-    async def _generate_and_speak_cancellable(self, text: str, prefetched: Optional[str] = None) -> None:
+    async def _generate_and_speak_cancellable(self, text: str, prefetched: str | None = None) -> None:
         """Generation entry-point used by the parallel subagent+main-agent
         pattern for short utterances. Identical to ``_generate_and_speak``
         but handles ``asyncio.CancelledError`` gracefully: when the noise-gate
@@ -3842,42 +3841,45 @@ class VoiceDuplexSession:
             logger.debug("voice conversation setup failed (non-fatal): %s", exc)
 
         asr_service = ASRService()
-        if not asr_service.enabled:
-            await self._send_json({"event": "error", "error": "语音识别服务未配置"})
-            return
-
-        hotwords = []
-        vocabulary_id: Optional[str] = None
-        try:
-            from sqlalchemy import select
-            from app.db.database import UserAsrHotword
-
-            res = await self.db.execute(
-                select(UserAsrHotword).where(UserAsrHotword.user_id == self.user.id)
-            )
-            items = res.scalars().all()
-            hotwords = [{"text": i.text, "weight": i.weight, "lang": i.lang} for i in items]
-            for item in items:
-                if item.dashscope_vocabulary_id:
-                    vocabulary_id = item.dashscope_vocabulary_id
-                    break
-        except Exception:
+        if asr_service.enabled:
             hotwords = []
-            vocabulary_id = None
+            vocabulary_id: str | None = None
+            try:
+                from sqlalchemy import select
 
-        try:
-            self._asr = _VoiceASR(
-                asr_service,
-                self._asr_events,
-                hotwords,
-                vocabulary_id,
-                context=list(self._history),
-            )
-            await self._asr.start()
-        except Exception as exc:
-            logger.error("voice ASR start failed: %s", exc)
-            await self._send_json({"event": "error", "error": f"无法启动语音识别: {exc}"})
-            return
+                from app.db.database import UserAsrHotword
+
+                res = await self.db.execute(
+                    select(UserAsrHotword).where(UserAsrHotword.user_id == self.user.id)
+                )
+                items = res.scalars().all()
+                hotwords = [{"text": i.text, "weight": i.weight, "lang": i.lang} for i in items]
+                for item in items:
+                    if item.dashscope_vocabulary_id:
+                        vocabulary_id = item.dashscope_vocabulary_id
+                        break
+            except Exception:
+                hotwords = []
+                vocabulary_id = None
+
+            try:
+                self._asr = _VoiceASR(
+                    asr_service,
+                    self._asr_events,
+                    hotwords,
+                    vocabulary_id,
+                    context=list(self._history),
+                )
+                await self._asr.start()
+            except Exception as exc:
+                logger.error("voice ASR start failed: %s", exc)
+                await self._send_json({"event": "error", "error": f"无法启动语音识别: {exc}"})
+                return
+        else:
+            # ASR 未配置：会话不终止，降级为仅文本输入（text 事件路径）。
+            # 历史行为是直接 error 退出——文本输入同样被切断，与 memory
+            # 记录的"ASR 未配置时文本路径可用"预期矛盾。
+            await self._send_json({"event": "info", "message": "语音识别未配置，仅支持文本输入"})
 
         self._tasks = [
             asyncio.create_task(self._asr_pipeline()),
@@ -3947,19 +3949,6 @@ class VoiceDuplexSession:
                 self._prox_updated = _now()
         elif event == "interrupt":
             await self._request_interrupt()
-        elif event == "_test_inject_asr":
-            # Test-only: inject ASR text to test interjection without real
-            # audio. Simulates FunASR emitting partial/segment events.
-            inj_text = msg.get("text", "")
-            is_segment = bool(msg.get("segment", False))
-            if is_segment:
-                # Segment (sentence_end): emit with the current accumulated text
-                await self._asr_events.put({"type": "segment", "text": self._latest_full})
-            elif inj_text:
-                # Partial: accumulate text and emit
-                full = (self._latest_full or "") + inj_text
-                self._latest_full = full
-                await self._asr_events.put({"type": "partial", "text": full})
         elif event == "stop":
             self._closed = True
 

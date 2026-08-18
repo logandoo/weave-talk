@@ -1,7 +1,7 @@
 import json
 import logging
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Protocol
+from typing import Any, Protocol
 
 from app.core.config import get_config
 
@@ -16,7 +16,7 @@ class ProviderConfig:
     api_key: str = ""
     api_mode: str = "chat_completions"
     model_name: str = ""
-    default_headers: Dict[str, str] = field(default_factory=dict)
+    default_headers: dict[str, str] = field(default_factory=dict)
     priority: int = 0
 
 
@@ -24,7 +24,7 @@ class ProviderAdapter(Protocol):
     name: str
 
     def is_available(self) -> bool: ...
-    def get_client_kwargs(self) -> Dict[str, Any]: ...
+    def get_client_kwargs(self) -> dict[str, Any]: ...
     def get_model_name(self) -> str: ...
 
 
@@ -37,7 +37,7 @@ class OpenAIAdapter:
     def is_available(self) -> bool:
         return bool(self.config.base_url)
 
-    def get_client_kwargs(self) -> Dict[str, Any]:
+    def get_client_kwargs(self) -> dict[str, Any]:
         return {
             "base_url": self.config.base_url,
             "api_key": self.config.api_key or config.api_key or "dummy-key",
@@ -56,7 +56,7 @@ class MiMoAdapter:
     def is_available(self) -> bool:
         return bool(self.config.base_url)
 
-    def get_client_kwargs(self) -> Dict[str, Any]:
+    def get_client_kwargs(self) -> dict[str, Any]:
         return {
             "base_url": self.config.base_url,
             "api_key": self.config.api_key or "dummy-key",
@@ -75,7 +75,7 @@ class OpenRouterAdapter:
     def is_available(self) -> bool:
         return bool(self.config.base_url)
 
-    def get_client_kwargs(self) -> Dict[str, Any]:
+    def get_client_kwargs(self) -> dict[str, Any]:
         return {
             "base_url": self.config.base_url,
             "api_key": self.config.api_key or "placeholder",
@@ -170,8 +170,8 @@ def build_thinking_extra_body(
 
 class ProviderRouter:
     def __init__(self):
-        self._providers: List[ProviderConfig] = []
-        self._adapters: Dict[str, ProviderAdapter] = {}
+        self._providers: list[ProviderConfig] = []
+        self._adapters: dict[str, ProviderAdapter] = {}
         self._load_providers()
 
     def _load_providers(self):
@@ -209,13 +209,26 @@ class ProviderRouter:
 
         self._providers.sort(key=lambda p: p.priority)
 
-    def get_provider(self, name: str = None) -> Optional[ProviderAdapter]:
+    def get_provider(self, name: str = None) -> ProviderAdapter | None:
         if name:
             return self._adapters.get(name)
         return self._adapters.get("default")
 
-    def get_client_kwargs(self, provider_name: str = None) -> Dict[str, Any]:
+    def _fallback_provider(self) -> ProviderAdapter | None:
+        """按 priority 排序（default=0 已含）取第一个可用的 provider。"""
+        for pc in self._providers:
+            if pc.base_url and pc.name in self._adapters:
+                return self._adapters[pc.name]
+        return self._adapters.get("default")
+
+    def get_client_kwargs(self, provider_name: str = None) -> dict[str, Any]:
         adapter = self.get_provider(provider_name)
+        if adapter is None:
+            # 配置了不存在的 provider 名（或 provider 未配置 key）：不再返回
+            # 空 dict（LLMService 会拿空 base_url 构造、调用必挂），按 priority
+            # 回落到可用 provider，保证 voice/assistant 链路有真实端点可打。
+            logger.warning("provider %r not configured — falling back to priority order", provider_name)
+            adapter = self._fallback_provider()
         if adapter is None:
             return {}
         return adapter.get_client_kwargs()
@@ -223,11 +236,13 @@ class ProviderRouter:
     def get_model_name(self, provider_name: str = None) -> str:
         adapter = self.get_provider(provider_name)
         if adapter is None:
+            adapter = self._fallback_provider()
+        if adapter is None:
             return config.model_name or "gpt-3.5-turbo"
         return adapter.get_model_name()
 
 
-_provider_router: Optional[ProviderRouter] = None
+_provider_router: ProviderRouter | None = None
 
 
 def get_provider_router() -> ProviderRouter:

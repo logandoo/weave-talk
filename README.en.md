@@ -13,7 +13,7 @@ end-to-end ASR → LLM → TTS pipeline over a real-time WebSocket, with barge-i
 - **Emotion system**: emotion state decays across the conversation (`_decay_emotion`) and can drive interjection text and TTS style (`_speak_interjection`)
 - **3 ASR modes, configurable**: DashScope realtime streaming (fun-asr-realtime / qwen3-asr-flash-realtime), MiMo streaming, generic HTTP transcription
 - **Configurable TTS**: MiMo mimo-v2.5-tts (OpenAI-compatible streaming), voice & style instruction support
-- **Multi-provider LLM routing**: any OpenAI-compatible base_url; `[providers.*]` routes by priority, falling back to `[api]`
+- **Multi-provider LLM routing**: any OpenAI-compatible base_url; `[providers.*]` routes by priority, falling back to the first available provider (default first) when the named one is missing
 - **Graceful degradation**: no ASR config → WS sends an error event and closes; TTS off → text-only events; no LLM → fallback copy
 - **Frontend**: Vue3 voice UI (VoiceChat component + useVoiceDuplex duplex client)
 

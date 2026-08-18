@@ -1,0 +1,15 @@
+[tool.ruff]
+line-length = 110
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "SIM"]
+ignore = [
+    "E501",  # 行宽已由 line-length 约束
+    "B008",  # FastAPI Depends 默认参数惯用法
+    "UP007", # 兼容性（chatbot 移植代码保留 Union/Optional 风格）
+    "E402",  # 重库懒加载的延迟 import 为刻意设计
+    "E741",  # 短变量名 l 为渲染循环惯用法
+    "SIM105", # try/except-pass 语义在异常抑制处更可读
+    "SIM103", # 三元/条件返回风格（可读性优先）
+]

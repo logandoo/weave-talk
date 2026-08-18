@@ -1,7 +1,8 @@
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
-from app.db.database import Assistant
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.core.config import get_config
+from app.db.database import Assistant
 
 config = get_config()
 

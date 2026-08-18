@@ -4,10 +4,9 @@ import json
 import logging
 import os
 import struct
-import uuid
 import time
-import httpx
-from typing import Optional, AsyncIterator
+import uuid
+from collections.abc import AsyncIterator
 from pathlib import Path
 from urllib.parse import urlparse, urlunparse
 
@@ -37,7 +36,7 @@ def _hotword_weight(item) -> int:
     return int(getattr(item, "weight", 4))
 
 
-def apply_hotword_phonetic_correction(text: str, hotwords: Optional[list]) -> str:
+def apply_hotword_phonetic_correction(text: str, hotwords: list | None) -> str:
     """Replace phonetically identical ASR outputs with configured hotwords.
 
     Some ASR models (especially for rare Chinese characters) return homophones
@@ -284,10 +283,10 @@ class ASRService:
                             proc.communicate(),
                             timeout=int(self._asr_config.get("ffmpeg_timeout_seconds", 60))
                         )
-                    except asyncio.TimeoutError:
+                    except TimeoutError:
                         proc.kill()
                         await proc.wait()
-                        raise RuntimeError("ffmpeg conversion timed out")
+                        raise RuntimeError("ffmpeg conversion timed out") from None
                     if proc.returncode != 0:
                         raise RuntimeError(f"ffmpeg conversion failed: {stderr.decode()}")
                     wav_bytes = await asyncio.to_thread(wav_file.read_bytes)
@@ -382,7 +381,7 @@ class ASRService:
         model = self.dashscope_model.lower()
         return model.startswith("fun-asr") or model.startswith("paraformer")
 
-    async def transcribe(self, audio_data: bytes, filename: str = "audio.wav", custom_hotwords: Optional[list[dict]] = None) -> dict:
+    async def transcribe(self, audio_data: bytes, filename: str = "audio.wav", custom_hotwords: list[dict] | None = None) -> dict:
         if not self.enabled:
             raise RuntimeError("ASR service is not configured")
 
@@ -411,10 +410,10 @@ class ASRService:
                         proc.communicate(),
                         timeout=int(self._asr_config.get("ffmpeg_timeout_seconds", 60))
                     )
-                except asyncio.TimeoutError:
+                except TimeoutError:
                     proc.kill()
                     await proc.wait()
-                    raise RuntimeError("ffmpeg conversion timed out")
+                    raise RuntimeError("ffmpeg conversion timed out") from None
                 if proc.returncode != 0:
                     raise RuntimeError(f"ffmpeg conversion failed: {stderr.decode()}")
                 send_file = wav_file
@@ -525,7 +524,7 @@ class ASRService:
 
                 await asyncio.gather(client_task, upstream_task, return_exceptions=True)
 
-    async def proxy_mimo_websocket_stream(self, client_websocket: WebSocket, default_hotwords: Optional[list[dict]] = None) -> None:
+    async def proxy_mimo_websocket_stream(self, client_websocket: WebSocket, default_hotwords: list[dict] | None = None) -> None:
         if not self.is_mimo:
             raise RuntimeError("MiMo ASR is not enabled")
         if not self.base_url or not self.api_key:
@@ -537,7 +536,7 @@ class ASRService:
         language = "auto"
         session_started = False
         finish_event = asyncio.Event()
-        partial_task: Optional[asyncio.Task] = None
+        partial_task: asyncio.Task | None = None
         last_partial_text = ""
 
         async def periodic_partial_asr() -> None:
@@ -550,7 +549,7 @@ class ASRService:
                         timeout=self.mimo_partial_interval_seconds,
                     )
                     return
-                except asyncio.TimeoutError:
+                except TimeoutError:
                     pass
 
                 if finish_event.is_set():
@@ -660,7 +659,7 @@ class ASRService:
                 except asyncio.CancelledError:
                     pass
 
-    async def proxy_dashscope_websocket_stream(self, client_websocket: WebSocket, default_hotwords: Optional[list[dict]] = None) -> None:
+    async def proxy_dashscope_websocket_stream(self, client_websocket: WebSocket, default_hotwords: list[dict] | None = None) -> None:
         if not self.is_dashscope:
             raise RuntimeError("Dashscope ASR is not enabled")
         if not self.dashscope_api_key:
@@ -885,7 +884,7 @@ class ASRService:
             except Exception:
                 pass
 
-    def _format_funasr_hotwords(self, hotwords: Optional[list[dict]]) -> Optional[str]:
+    def _format_funasr_hotwords(self, hotwords: list[dict] | None) -> str | None:
         """DashScope hot words are now managed via the Vocabulary REST API.
         This method is kept for backward compatibility with non-DashScope
         FunASR deployments that accept an inline hotwords string."""
@@ -904,8 +903,8 @@ class ASRService:
     async def proxy_funasr_websocket_stream(
         self,
         client_websocket: WebSocket,
-        default_hotwords: Optional[list[dict]] = None,
-        vocabulary_id: Optional[str] = None,
+        default_hotwords: list[dict] | None = None,
+        vocabulary_id: str | None = None,
     ) -> None:
         if not self.is_dashscope:
             raise RuntimeError("Dashscope ASR is not enabled")

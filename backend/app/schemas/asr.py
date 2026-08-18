@@ -1,33 +1,33 @@
+
 from pydantic import BaseModel
-from typing import Optional, List, Dict, Any
 
 
 class HotwordItem(BaseModel):
     text: str
     weight: int
-    lang: Optional[str] = None
+    lang: str | None = None
 
 
 class HotwordListResponse(BaseModel):
-    hotwords: List[HotwordItem]
+    hotwords: list[HotwordItem]
 
 
 class HotwordListRequest(BaseModel):
-    hotwords: List[HotwordItem]
+    hotwords: list[HotwordItem]
 
 
 class ASRRequest(BaseModel):
-    language: Optional[str] = "auto"
-    format: Optional[str] = "wav"
-    return_timestamps: Optional[bool] = True
-    use_hotwords: Optional[bool] = True
-    custom_hotwords: Optional[List[HotwordItem]] = None
-    context: Optional[str] = None
+    language: str | None = "auto"
+    format: str | None = "wav"
+    return_timestamps: bool | None = True
+    use_hotwords: bool | None = True
+    custom_hotwords: list[HotwordItem] | None = None
+    context: str | None = None
 
 
 class SegmentInfo(BaseModel):
     speaker: str
-    speaker_confidence: Optional[float] = None
+    speaker_confidence: float | None = None
     start_time: float
     end_time: float
     text: str
@@ -41,9 +41,9 @@ class TimestampInfo(BaseModel):
 
 class ASRResponse(BaseModel):
     text: str
-    language: Optional[str] = None
-    timestamps: Optional[List[TimestampInfo]] = []
-    segments: Optional[List[SegmentInfo]] = []
-    hotwords_used: Optional[List[str]] = []
-    speaker_mode: Optional[str] = "disabled"
-    duration: Optional[float] = None
+    language: str | None = None
+    timestamps: list[TimestampInfo] | None = []
+    segments: list[SegmentInfo] | None = []
+    hotwords_used: list[str] | None = []
+    speaker_mode: str | None = "disabled"
+    duration: float | None = None

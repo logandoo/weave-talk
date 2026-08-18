@@ -9,7 +9,7 @@ from __future__ import annotations
 import base64
 import json
 import logging
-from typing import AsyncIterator, Optional
+from collections.abc import AsyncIterator
 
 import httpx
 
@@ -72,7 +72,7 @@ class TTSService:
     async def stream_tts(
         self,
         text: str,
-        style_instruction: Optional[str] = None,
+        style_instruction: str | None = None,
         timeout: float = 60.0,
     ) -> AsyncIterator[bytes]:
         """Stream PCM16 audio chunks for a single text segment.
@@ -143,7 +143,7 @@ class TTSService:
             raise
 
 
-_tts_service: Optional[TTSService] = None
+_tts_service: TTSService | None = None
 
 
 def get_tts_service() -> TTSService:

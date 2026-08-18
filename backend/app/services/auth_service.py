@@ -1,9 +1,10 @@
 import asyncio
-import jwt
-import bcrypt
 import uuid
-from datetime import datetime, timedelta
-from typing import Optional
+from datetime import UTC, datetime, timedelta
+
+import bcrypt
+import jwt
+
 from app.core.config import get_config
 
 config = get_config()
@@ -26,18 +27,18 @@ async def verify_password(password: str, hashed: str) -> bool:
 
 
 def create_access_token(user_id: str, username: str) -> str:
-    expire = datetime.utcnow() + timedelta(days=ACCESS_TOKEN_EXPIRE_DAYS)
+    expire = datetime.now(UTC).replace(tzinfo=None) + timedelta(days=ACCESS_TOKEN_EXPIRE_DAYS)
     payload = {
         "sub": user_id,
         "username": username,
         "exp": expire,
-        "iat": datetime.utcnow(),
+        "iat": datetime.now(UTC).replace(tzinfo=None),
         "jti": str(uuid.uuid4())
     }
     return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
 
 
-def decode_access_token(token: str) -> Optional[dict]:
+def decode_access_token(token: str) -> dict | None:
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         return payload

@@ -14,3 +14,6 @@ dist/
 
 # 含真实 API key 的模型配置（模板见 README；勿提交）
 config_model.toml
+
+# 自动生成的 JWT 密钥（config.py 首次启动生成）
+.jwt_secret

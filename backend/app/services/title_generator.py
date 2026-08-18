@@ -2,7 +2,6 @@ import asyncio
 import json
 import logging
 import re
-from typing import Optional
 
 from app.core.config import get_config
 from app.services.llm_service import LLMService
@@ -193,7 +192,7 @@ class TitleGeneratorService:
         self.provider_type = provider_type
         self.custom_model_name = custom_model_name
 
-    async def _request_title_json(self, messages: list[dict]) -> Optional[dict]:
+    async def _request_title_json(self, messages: list[dict]) -> dict | None:
         attempts = config.title_generation_structured_output_attempts
         max_tokens = config.title_generation_max_tokens
         repair_max_tokens = config.title_generation_repair_max_tokens
@@ -251,7 +250,7 @@ class TitleGeneratorService:
         self,
         user_query: str,
         assistant_response: str
-    ) -> Optional[str]:
+    ) -> str | None:
         """
         Generate a title for the conversation using LLM.
 

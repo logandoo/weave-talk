@@ -9,10 +9,15 @@ host = "127.0.0.1"
 port = 8203
 
 [security]
-jwt_secret_key = "weave-talk-local-dev-secret-change-me-in-production-2026"
+# jwt_secret_key：留空时优先读环境变量 JWT_SECRET_KEY，再自动生成并
+# 持久化到 backend/.jwt_secret（gitignore，重启不失效）。生产环境用环境变量注入。
+jwt_secret_key = ""
 jwt_expire_days = 7
 cors_allow_origins = ["*"]
 cors_allow_credentials = true
+# 登录失败限流（窗口内失败次数；0 关闭）
+login_rate_limit_max = 10
+login_rate_limit_window_seconds = 60
 
 [database]
 # type: sqlite（默认，本地轻量，零外部依赖）| postgres（与 chatbot 一致）

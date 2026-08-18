@@ -28,6 +28,7 @@ export interface VoiceEvent {
   task_id?: string
   title?: string
   status?: string
+  message?: string
 }
 
 export interface VoiceSession {

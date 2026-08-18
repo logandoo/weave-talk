@@ -1,5 +1,7 @@
-from pydantic import BaseModel, Field
-from typing import Optional, List, Literal, Dict, Any
+from typing import Any
+
+from pydantic import BaseModel
+
 
 class UserCreate(BaseModel):
     username: str
@@ -10,7 +12,7 @@ class UserResponse(BaseModel):
     id: str
     username: str
     created_at: str
-    agent_permissions: Optional[Dict[str, Any]] = None
+    agent_permissions: dict[str, Any] | None = None
 
 
 class LoginRequest(BaseModel):

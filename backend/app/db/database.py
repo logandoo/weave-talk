@@ -1,16 +1,21 @@
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
-from sqlalchemy.orm import declarative_base, relationship
-from sqlalchemy import Column, String, DateTime, Text, ForeignKey, Boolean, Float, Integer, JSON
-from datetime import datetime
+import logging
 import uuid
+from datetime import UTC, datetime
+
+from sqlalchemy import JSON, Boolean, Column, DateTime, Float, ForeignKey, Integer, String, Text
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.orm import declarative_base, relationship
 
 from app.core.config import get_config
-
-import logging
 
 logger = logging.getLogger(__name__)
 
 config = get_config()
+
+def utcnow() -> datetime:
+    """naive UTC 当前时间（数据库 DateTime 列为 naive，与既有数据一致）。"""
+    return datetime.now(UTC).replace(tzinfo=None)
+
 
 Base = declarative_base()
 
@@ -28,8 +33,8 @@ class User(Base):
     last_login_at = Column(DateTime, nullable=True)
     last_login_ip = Column(String(45), nullable=True)
     agent_permissions = Column(Text, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=utcnow)
+    updated_at = Column(DateTime, default=utcnow, onupdate=utcnow)
 
     conversations = relationship("Conversation", back_populates="user", cascade="all, delete-orphan")
     assistants = relationship("Assistant", back_populates="user", cascade="all, delete-orphan")
@@ -78,8 +83,8 @@ class Assistant(Base):
     thinking_presence_penalty = Column(Float, nullable=True)
     thinking_repetition_penalty = Column(Float, nullable=True)
     preserve_thinking = Column(Boolean, default=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=utcnow)
+    updated_at = Column(DateTime, default=utcnow, onupdate=utcnow)
 
     conversations = relationship("Conversation", back_populates="assistant", cascade="all, delete-orphan")
     user = relationship("User", back_populates="assistants")
@@ -93,8 +98,8 @@ class Conversation(Base):
     assistant_id = Column(String(36), ForeignKey("assistants.id", ondelete="SET NULL"), nullable=True)
     title = Column(String(255), default="新对话")
     sort_order = Column(Integer, default=0)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=utcnow)
+    updated_at = Column(DateTime, default=utcnow, onupdate=utcnow)
     # Deathmatch (死磕) mode
     deathmatch_mode = Column(Boolean, default=False)
     deathmatch_goal = Column(Text, nullable=True)
@@ -146,7 +151,7 @@ class Message(Base):
     # multi-turn conversations replay structured tool history through the
     # LLM context instead of just opaque content text.
     tool_calls = Column(Text, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=utcnow)
 
     conversation = relationship("Conversation", back_populates="messages")
 
@@ -159,9 +164,9 @@ class UserSession(Base):
     session_token = Column(String(512), unique=True, index=True, nullable=False)
     ip_address = Column(String(45), nullable=True)
     user_agent = Column(Text, nullable=True)
-    last_active_at = Column(DateTime, default=datetime.utcnow)
+    last_active_at = Column(DateTime, default=utcnow)
     expires_at = Column(DateTime, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=utcnow)
 
     user = relationship("User", back_populates="sessions")
 
@@ -175,8 +180,8 @@ class UserAsrHotword(Base):
     weight = Column(Integer, nullable=False, default=4)
     lang = Column(String(10), nullable=True)
     dashscope_vocabulary_id = Column(String(120), nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=utcnow)
+    updated_at = Column(DateTime, default=utcnow, onupdate=utcnow)
 
     user = relationship("User", back_populates="asr_hotwords")
 

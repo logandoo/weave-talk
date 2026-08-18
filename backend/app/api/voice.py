@@ -1,13 +1,12 @@
 import logging
 
-from fastapi import APIRouter, WebSocket, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, WebSocket, status
 from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_config
 from app.core.deps import get_current_user, get_current_user_from_websocket
-from app.db.database import Conversation, Message, get_db
-from app.db.database import User
+from app.db.database import Conversation, Message, User, get_db
 from app.services.assistant_service import ensure_voice_assistant
 from app.services.voice_service import VoiceDuplexSession
 
