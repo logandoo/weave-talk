@@ -3813,7 +3813,7 @@ class VoiceDuplexSession:
         # Ensure a conversation exists and announce the session FIRST, then
         # send `ready` IMMEDIATELY. `_load_identity` below can block for tens
         # of seconds (the shared-memory retrieval runs an AWAITED query-
-        # expansion LLM call on the user's custom provider —  —
+        # expansion LLM call on the user's custom provider —
         # which is slow or unreachable; observed 15:12: sessions hung there
         # and the client timed out at 12s: "连接语音服务超时", completely
         # unusable). The client starts mic capture on `ready`; audio buffers
